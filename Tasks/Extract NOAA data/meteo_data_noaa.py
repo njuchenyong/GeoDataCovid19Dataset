@@ -12,6 +12,7 @@ import numpy as np
 # Set to True to download the files from the source. This should be performed as rarely as
 # possible. The scrpt downloads the files to local.
 download_files = False
+folder_path = "C:/Users/Daniel/Documents/COVID-19 temp data/"
 
 if download_files:
     ftp = FTP("ftp.ncdc.noaa.gov")
@@ -20,7 +21,7 @@ if download_files:
     ftp.cwd("/pub/data/ghcn/daily/")
     
     # readme file, contains useful information about the data
-    with open("readme.txt", "wb") as fp:
+    with open(f"{folder_path}readme.txt", "wb") as fp:
         ftp.retrbinary('RETR readme.txt', fp.write)
     
     # Extract stations metadata.
@@ -28,14 +29,14 @@ if download_files:
         ftp.retrbinary('RETR ghcnd-stations.txt', fp.write)
     
     # Country codes
-    with open("country_codes.txt", "wb") as fp:
+    with open(f"{folder_path}country_codes.txt", "wb") as fp:
         ftp.retrbinary('RETR ghcnd-countries.txt', fp.write)
     
     # All daily data. This is 3gb+, takes a long time.
-    with open("all_daily_data.tar.gz", "wb") as fp:
+    with open(f"{folder_path}all_daily_data.tar.gz", "wb") as fp:
         ftp.retrbinary('RETR ghcnd_all.tar.gz', fp.write)
-    with tar.open("all_daily_data.tar.gz") as tar_all:
-        tar_all.extractall(path="./all_daily/")
+    with tar.open(f"{folder_path}all_daily_data.tar.gz") as tar_all:
+        tar_all.extractall(path=f"{folder_path}all_daily/")
         
 df_stations = pd.read_fwf("stations_metadata.txt",
                           colspecs=[(0, 11),
@@ -59,7 +60,7 @@ df_stations = pd.read_fwf("stations_metadata.txt",
                                  "WMO ID"]
                           )
 
-df_countries = pd.read_fwf("country_codes.txt",
+df_countries = pd.read_fwf(f"{folder_path}country_codes.txt",
                            colspecs=[(0, 2), (3, 50)],
                            header=None,
                            names=["COUNTRY_CODE", "COUNTRY"])
@@ -123,7 +124,7 @@ def reshape_daily_data(month_data):
                               "SOURCE_FLAG": source_flag})
 
 def time_series_of_station(station_name):
-    df = pd.read_fwf(f"./all_daily/ghcnd_all/{station_name}.dly",
+    df = pd.read_fwf(f"{folder_path}all_daily/ghcnd_all/{station_name}.dly",
                      colspecs=colspecs,
                      header=None,
                      names=colnames)
