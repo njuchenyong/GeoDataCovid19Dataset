@@ -1,6 +1,6 @@
-"""Extract and prepare meteorological data from https://www.ncdc.noaa.gov/
+'''Extract and prepare meteorological data from https://www.ncdc.noaa.gov/
 the National Centers for Environmental Information
-"""
+'''
 
 import logging
 import os
@@ -9,23 +9,22 @@ from ftplib import FTP
 
 import pandas as pd
 
-from references import load_dataset
+from references import load_dataset, DATA_DIRECTORY
 
 logging.basicConfig(level=logging.DEBUG)
 
 
 NOAA_FTP_FILES = {
     'readme.txt': 'RETR readme.txt',
-    "stations_metadata.txt": 'RETR ghcnd-stations.txt',
+    'stations_metadata.txt': 'RETR ghcnd-stations.txt',
     'country_codes.txt': 'RETR ghcnd-countries.txt',
+    'stations_inventory.txt': 'RETR ghcnd-inventory.txt',
     'all_daily_data.tar.gz': 'RETR ghcnd_all.tar.gz'
 }
 
-DOWNLOAD_DIRECTORY = 'data'
-
 
 def download_noaa_files(large_files=True, skip_downloaded=True):
-    """Download files from the NOAA FTP server.
+    '''Download files from the NOAA FTP server.
     
     Arguments:
         large_files(bool):
@@ -36,12 +35,12 @@ def download_noaa_files(large_files=True, skip_downloaded=True):
 
     Returns:
         None. The files will be downloaded on DOWNLOADED_DIRECTORY.
-    """
+    '''
     logging.info('Connecting to NOAA FTP server.')
-    ftp = FTP("ftp.ncdc.noaa.gov")
+    ftp = FTP('ftp.ncdc.noaa.gov')
     print(ftp.login())
 
-    ftp.cwd("/pub/data/ghcn/daily/")
+    ftp.cwd('/pub/data/ghcn/daily/')
 
     for filename, action in NOAA_FTP_FILES:
         logging.debug('Downloading %s', filename)
@@ -50,38 +49,38 @@ def download_noaa_files(large_files=True, skip_downloaded=True):
                 continue
 
             logging.debug('This is file is more than 3Gb+, it may take a long time.')
-        path = os.path.join(DOWNLOAD_DIRECTORY, filename)
+        path = os.path.join(DATA_DIRECTORY, filename)
         if skip_downloaded:
             server_file_name = action.split(' ')[1]
             if os.path.exists(path) and ftp.size(server_file_name) == os.stat(path).st_size:
                 continue
-        with open(path, "wb") as fp:
+        with open(path, 'wb') as fp:
             ftp.retrbinary(action, fp.write)
 
     logging.debug('Extracting daily data.')
-    with tar.open("all_daily_data.tar.gz") as tar_all:
-        tar_all.extractall(path="./all_daily/")
+    with tar.open('all_daily_data.tar.gz') as tar_all:
+        tar_all.extractall(path='./all_daily/')
 
     logging.debug('Done!')
 
 
 def reshape_daily_data(month_data):
-    """Reshape a row of monthly data into a dataframe with date as a column."""
+    '''Reshape a row of monthly data into a dataframe with date as a column.'''
     month_data = month_data.iloc[0]
 
-    station_id = month_data["ID"]
+    station_id = month_data['ID']
     year = month_data['YEAR']
     month = month_data['MONTH']
     element = month_data['ELEMENT']
 
     data = [{
-        "ID": station_id,
-        "DATE": f'{day}-{month}-{year}',
-        "ELEMENT": element,
-        "VALUE": month_data[f'VALUE{day}'],
-        "MEASURMENT_FLAG": month_data[f'MFLAG{day}'],
-        "QUALITY_FLAG": month_data[f'QFLAG{day}'],
-        "SOURCE_FLAG": month_data[f'SFLAG{day}'],
+        'ID': station_id,
+        'DATE': f'{day}-{month}-{year}',
+        'ELEMENT': element,
+        'VALUE': month_data[f'VALUE{day}'],
+        'MEASURMENT_FLAG': month_data[f'MFLAG{day}'],
+        'QUALITY_FLAG': month_data[f'QFLAG{day}'],
+        'SOURCE_FLAG': month_data[f'SFLAG{day}'],
     } for day in range(1, 32)]
 
     return pd.DataFrame(data)
@@ -97,24 +96,24 @@ def time_series_of_station(station_row):
         return
 
     # Put data in a time series
-    df = df.groupby(["ID", "YEAR", "MONTH", "ELEMENT"]).apply(reshape_daily_data)
+    df = df.groupby(['ID', 'YEAR', 'MONTH', 'ELEMENT']).apply(reshape_daily_data)
     return df.reset_index(drop=True)
 
 
 def process_noaa_data(countries):
-    """Returns a dataset for the given countries """
+    '''Returns a dataset for the given countries '''
 
     df_stations = load_dataset('stations')
     df_countries = load_dataset('countries')
 
     # Join country to df_stations
-    df_stations["COUNTRY_CODE"] = df_stations["ID"].str.slice(0, 2)
-    df_stations = df_stations.merge(df_countries, on=["COUNTRY_CODE"], how="left")
+    df_stations['COUNTRY_CODE'] = df_stations['ID'].str.slice(0, 2)
+    df_stations = df_stations.merge(df_countries, on=['COUNTRY_CODE'], how='left')
 
-    df_stations = df_stations[df_stations["COUNTRY_CODE"].isin(countries)]
+    df_stations = df_stations[df_stations['COUNTRY_CODE'].isin(countries)]
 
-    df_daily_information = df_stations[['ID']].groupby("ID").apply(time_series_of_station)
+    df_daily_information = df_stations[['ID']].groupby('ID').apply(time_series_of_station)
     df_daily_information.reset_index(drop=True, inplace=True)
 
-    return df_daily_information.merge(df_stations, how="left", on=["ID"])
+    return df_daily_information.merge(df_stations, how='left', on=['ID'])
 
