@@ -3,6 +3,7 @@ the National Centers for Environmental Information
 """
 
 import logging
+import os
 import tarfile as tar
 from ftplib import FTP
 
@@ -12,6 +13,7 @@ from references import load_dataset
 
 logging.basicConfig(level=logging.DEBUG)
 
+
 NOAA_FTP_FILES = {
     'readme.txt': 'RETR readme.txt',
     "stations_metadata.txt": 'RETR ghcnd-stations.txt',
@@ -19,8 +21,22 @@ NOAA_FTP_FILES = {
     'all_daily_data.tar.gz': 'RETR ghcnd_all.tar.gz'
 }
 
+DOWNLOAD_DIRECTORY = 'data'
 
-def download_noaa_files():
+
+def download_noaa_files(large_files=True, skip_downloaded=True):
+    """Download files from the NOAA FTP server.
+    
+    Arguments:
+        large_files(bool):
+            Wheter or not to download the 3Gb daily reports, only download reference data.
+        skip_downloaded(bool):
+            Check if the file exists on local and has the same size that in the server,
+            if True, will be skiped, if False will download it.
+
+    Returns:
+        None. The files will be downloaded on DOWNLOADED_DIRECTORY.
+    """
     logging.info('Connecting to NOAA FTP server.')
     ftp = FTP("ftp.ncdc.noaa.gov")
     print(ftp.login())
@@ -30,8 +46,16 @@ def download_noaa_files():
     for filename, action in NOAA_FTP_FILES:
         logging.debug('Downloading %s', filename)
         if filename.endswith('tar.gz'):
+            if not large_files:
+                continue
+
             logging.debug('This is file is more than 3Gb+, it may take a long time.')
-        with open(filename, "wb") as fp:
+        path = os.path.join(DOWNLOAD_DIRECTORY, filename)
+        if skip_downloaded:
+            server_file_name = action.split(' ')[1]
+            if os.path.exists(path) and ftp.size(server_file_name) == os.stat(path).st_size:
+                continue
+        with open(path, "wb") as fp:
             ftp.retrbinary(action, fp.write)
 
     logging.debug('Extracting daily data.')
