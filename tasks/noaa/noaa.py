@@ -1,4 +1,4 @@
-"""# Extract and prepare meteorological data from https://www.ncdc.noaa.gov/
+"""Extract and prepare meteorological data from https://www.ncdc.noaa.gov/
 the National Centers for Environmental Information
 """
 
@@ -8,7 +8,7 @@ from ftplib import FTP
 
 import pandas as pd
 
-from noaa.references import load_dataset
+from references import load_dataset
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -93,3 +93,4 @@ def process_noaa_data(countries):
     df_daily_information.reset_index(drop=True, inplace=True)
 
     return df_daily_information.merge(df_stations, how="left", on=["ID"])
+
