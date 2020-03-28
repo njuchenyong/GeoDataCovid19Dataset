@@ -139,6 +139,7 @@ totalTestResults - Calculated value (positive + negative) of total test results.
 totalTestResultsIncrease - Increase from the day before.
 posNeg - DEPRECATED Renamed to totalTestResults.
 total - DEPRECATED Will be removed in the future. (positive + negative + pending). Pending has been an unstable value and should not count in any totals.
+
 /api/urls - Tracker URLs
 /api/urls
 
