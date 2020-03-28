@@ -73,8 +73,9 @@ def download_noaa_files(large_files=True, skip_downloaded=False):
             ftp.retrbinary(action, fp.write)
 
     logging.debug('Extracting daily data.')
-    with tar.open('all_daily_data.tar.gz') as tar_all:
-        tar_all.extractall(path='./all_daily/')
+    tar_path = f'{DATA_DIRECTORY}/all_daily_data.tar.gz'
+    with tar.open(tar_path) as tar_all:
+        tar_all.extractall(path=f'{DATA_DIRECTORY}/all_daily/')
 
     logging.debug('Done!')
 
