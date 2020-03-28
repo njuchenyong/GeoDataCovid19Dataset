@@ -1,6 +1,7 @@
 import requests
 import json
 import pandas as pd
+import argparse
 
 DATASETS = {
     'states_historical_data': {
@@ -23,18 +24,32 @@ DATASETS = {
         }
 }
 
+def get_argparser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-o', '--output', required=True,
+        help='Destination file to store the processed dataset.')
+
+    return parser
+
 def load_dataset(dataset_name):
     data_raw = requests.get(DATASETS[dataset_name]['url'])
     data_json = json.loads(data_raw.text)
     return pd.DataFrame(data_json)
 
 def main():
+    parser = get_argparser()
+    args = parser.parse_args()
+    
     df_states_hist_data = load_dataset('states_historical_data')
     df_states_info = load_dataset('states_information')
     df_us_hist_data = load_dataset('us_historical_data')
     df_counties = load_dataset('counties')
     df_trackers_url = load_dataset('trackers_url')
     df_press = load_dataset('press')
+    
+    df_states_hist_data.to_csv(f"{args.output}/states_hist_data.csv",
+                               index=False, header=True)
 
 if __name__ == "__main__":
     main()
@@ -79,6 +94,7 @@ death - Total cumulative number of people that have died.
 deathIncrease - Increase from the day before.
 dateChecked - ISO 8601 date of the time we saved visited their website
 total - DEPRECATED Will be removed in the future. (positive + negative + pending). Pending has been an unstable value and should not count in any totals.
+
 /api/states/info - States Information
 /api/states/info | CSV
 
