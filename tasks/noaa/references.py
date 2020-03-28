@@ -1,4 +1,35 @@
+import json
+import os
+
 import pandas as pd
+
+DATA_DIRECTORY = 'data'
+
+
+def generate_daily_reports_column_info():
+    '''This function was used to generate the colnames and colspecs of DATASETS['daily_report'].'''
+    colnames = ['ID', 'YEAR', 'MONTH', 'ELEMENT']
+    colspecs = [(0, 11), (11, 15), (15, 17), (17, 21)]
+    last = 21
+    for day in range(1, 32):
+        colnames.append(f'VALUE{day}')
+        colspecs.append((last, last+5))
+        last += 5
+
+        colnames.append(f'MFLAG{day}')
+        colspecs.append((last, last+1))
+        last += 1
+
+        colnames.append(f'QFLAG{day}')
+        colspecs.append((last, last+1))
+        last += 1
+
+        colnames.append(f'SFLAG{day}')
+        colspecs.append((last, last+1))
+        last += 1
+
+    return colspecs, colnames
+
 
 DATASETS = {
     'countries': {
@@ -6,7 +37,7 @@ DATASETS = {
         'args': dict(
             colspecs=[(0, 2), (3, 50)],
             header=None,
-            names=["COUNTRY_CODE", "COUNTRY"]
+            names=['COUNTRY_CODE', 'COUNTRY']
         ),
     },
     'stations': {
@@ -14,8 +45,16 @@ DATASETS = {
         'args': dict(
             colspecs=[(0, 11), (12, 20), (21, 30), (31, 37), (38, 40), (41, 71), (72, 75), (76, 79), (80, 85)],
             header=None,
-            names=["ID", "LATITUDE", "LONGITUDE", "ELEVATION", "STATE", "NAME", "GSN FLAG", "HCN/CRN FLAG", "WMO ID"]
+            names=['ID', 'LATITUDE', 'LONGITUDE', 'ELEVATION', 'STATE', 'NAME', 'GSN FLAG', 'HCN/CRN FLAG', 'WMO ID']
         ),
+    },
+    'inventory': {
+        'filename': 'stations_inventory.txt',
+        'args': dict(
+            colspecs='infer',
+            header=None,
+            names=['ID', 'latitude', 'longitude', 'element', 'start_date', 'end_date']
+        )
     },
     'daily_report': {
         'args': dict(
@@ -61,46 +100,243 @@ DATASETS = {
 
 
 def load_dataset(dataset_name):
-    """Load a downloaded dataset as a pandas dataframe.
+    '''Load a downloaded dataset as a pandas dataframe.
 
     Arguments:
         dataset_name(str):
-            Name of the dataset, supported values are 'countries', 'stations' and
-            the value of a station ID for the raw monthly report.
+            Name of the dataset, supported values are 'countries', 'stations',
+            'inventory' and the value of a station ID.
 
     Returns:
         pandas.DataFrame
-    """
+    '''
 
     dataset_params = DATASETS.get(dataset_name)
 
     if dataset_params is None:
         dataset_params = DATASETS.get('daily_report')
-        dataset_params['filename'] = f"./all_daily/ghcnd_all/{dataset_name}.dly"
+        dataset_params['filename'] = f'./all_daily/ghcnd_all/{dataset_name}.dly'
 
-    return pd.read_fwf(dataset_params['filename'], **dataset_params['args'])
+    path = os.path.join(DATA_DIRECTORY, dataset_params['filename'])
+    return pd.read_fwf(path, **dataset_params['args'])
 
 
-def generate_daily_reports_column_info():
-    """This function was used to generate the colnames and colspecs of the daily reports."""
-    colnames = ["ID", "YEAR", "MONTH", "ELEMENT"]
-    colspecs = [(0, 11), (11, 15), (15, 17), (17, 21)]
-    last = 21
-    for day in range(1, 32):
-        colnames.append(f"VALUE{day}")
-        colspecs.append((last, last+5))
-        last += 5
+def get_territory_codes(name, countries):
+    '''Get all the codes for territories that belong to another country.'''
+    codes = countries[countries.COUNTRY == name].COUNTRY_CODE.tolist()
+    codes.extend(countries[countries.COUNTRY.str.endswith(f' [{name}]')].COUNTRY_CODE.tolist())
+    return codes
 
-        colnames.append(f"MFLAG{day}")
-        colspecs.append((last, last+1))
-        last += 1
 
-        colnames.append(f"QFLAG{day}")
-        colspecs.append((last, last+1))
-        last += 1
+def get_country_territory_codes_map(df_countries):
+    '''Generate the mapping of countries and all their territories codes.'''
+    metropolis = df_countries[~df_countries.COUNTRY.str.contains(r'\[')].to_dict('records')
+    return {row['COUNTRY_CODE']: get_territory_codes(row['COUNTRY']) for row in metropolis}
 
-        colnames.append(f"SFLAG{day}")
-        colspecs.append((last, last+1))
-        last += 1
 
-    return colspecs, colnames
+'''This dictionary was obtained by running:
+>>> countries = load_dataset('countries')
+>>> get_country_territory_map(countries)'''
+COUNTRY_AND_TERRITORY_CODES = {
+    'AC': ['AC'],
+    'AE': ['AE'],
+    'AF': ['AF'],
+    'AG': ['AG'],
+    'AJ': ['AJ'],
+    'AL': ['AL'],
+    'AM': ['AM'],
+    'AO': ['AO'],
+    'AR': ['AR'],
+    'AS': ['AS', 'CK', 'KT', 'NF'],
+    'AU': ['AU'],
+    'AY': ['AY'],
+    'BA': ['BA'],
+    'BB': ['BB'],
+    'BC': ['BC'],
+    'BE': ['BE'],
+    'BF': ['BF'],
+    'BG': ['BG'],
+    'BH': ['BH'],
+    'BK': ['BK'],
+    'BL': ['BL'],
+    'BM': ['BM'],
+    'BN': ['BN'],
+    'BO': ['BO'],
+    'BP': ['BP'],
+    'BR': ['BR'],
+    'BU': ['BU'],
+    'BX': ['BX'],
+    'BY': ['BY'],
+    'CA': ['CA'],
+    'CB': ['CB'],
+    'CD': ['CD'],
+    'CE': ['CE'],
+    'CF': ['CF'],
+    'CG': ['CG'],
+    'CH': ['CH'],
+    'CI': ['CI'],
+    'CM': ['CM'],
+    'CO': ['CO'],
+    'CS': ['CS'],
+    'CT': ['CT'],
+    'CU': ['CU'],
+    'CV': ['CV'],
+    'CY': ['CY'],
+    'DA': ['DA', 'GL'],
+    'DO': ['DO'],
+    'DR': ['DR'],
+    'EC': ['EC'],
+    'EG': ['EG'],
+    'EI': ['EI'],
+    'EK': ['EK'],
+    'EN': ['EN'],
+    'ER': ['ER'],
+    'ES': ['ES'],
+    'ET': ['ET'],
+    'EZ': ['EZ'],
+    'FI': ['FI'],
+    'FJ': ['FJ'],
+    'FM': ['FM'],
+    'FP': ['FP'],
+    'FR': ['FR', 'EU', 'FG', 'FS', 'GP', 'JU', 'MB', 'MF', 'NC', 'RE', 'SB', 'TE', 'WF'],
+    'GA': ['GA'],
+    'GB': ['GB'],
+    'GG': ['GG'],
+    'GH': ['GH'],
+    'GM': ['GM'],
+    'GR': ['GR'],
+    'GT': ['GT'],
+    'GV': ['GV'],
+    'GY': ['GY'],
+    'HO': ['HO'],
+    'HR': ['HR'],
+    'HU': ['HU'],
+    'IC': ['IC'],
+    'ID': ['ID'],
+    'IN': ['IN'],
+    'IR': ['IR'],
+    'IS': ['IS'],
+    'IT': ['IT'],
+    'IV': ['IV'],
+    'IZ': ['IZ'],
+    'JA': ['JA'],
+    'JM': ['JM'],
+    'JO': ['JO'],
+    'KE': ['KE'],
+    'KG': ['KG'],
+    'KN': ['KN'],
+    'KR': ['KR'],
+    'KS': ['KS'],
+    'KU': ['KU'],
+    'KZ': ['KZ'],
+    'LA': ['LA'],
+    'LE': ['LE'],
+    'LG': ['LG'],
+    'LH': ['LH'],
+    'LI': ['LI'],
+    'LO': ['LO'],
+    'LT': ['LT'],
+    'LU': ['LU'],
+    'LY': ['LY'],
+    'MA': ['MA'],
+    'MC': ['MC'],
+    'MD': ['MD'],
+    'MG': ['MG'],
+    'MI': ['MI'],
+    'MJ': ['MJ'],
+    'MK': ['MK'],
+    'ML': ['ML'],
+    'MO': ['MO'],
+    'MP': ['MP'],
+    'MR': ['MR'],
+    'MT': ['MT'],
+    'MU': ['MU'],
+    'MV': ['MV'],
+    'MX': ['MX'],
+    'MY': ['MY'],
+    'MZ': ['MZ'],
+    'NG': ['NG'],
+    'NH': ['NH'],
+    'NI': ['NI'],
+    'NL': ['NL'],
+    'NN': ['NN'],
+    'NO': ['NO', 'JN', 'SV'],
+    'NP': ['NP'],
+    'NS': ['NS'],
+    'NU': ['NU'],
+    'NZ': ['NZ', 'CW', 'NE', 'TL'],
+    'PA': ['PA'],
+    'PE': ['PE'],
+    'PK': ['PK'],
+    'PL': ['PL'],
+    'PM': ['PM'],
+    'PO': ['PO'],
+    'PP': ['PP'],
+    'PS': ['PS'],
+    'PU': ['PU'],
+    'QA': ['QA'],
+    'RI': ['RI'],
+    'RM': ['RM'],
+    'RO': ['RO'],
+    'RP': ['RP'],
+    'RS': ['RS'],
+    'RW': ['RW'],
+    'SA': ['SA'],
+    'SE': ['SE'],
+    'SF': ['SF'],
+    'SG': ['SG'],
+    'SI': ['SI'],
+    'SL': ['SL'],
+    'SN': ['SN'],
+    'SP': ['SP'],
+    'ST': ['ST'],
+    'SU': ['SU'],
+    'SW': ['SW'],
+    'SY': ['SY'],
+    'SZ': ['SZ'],
+    'TD': ['TD'],
+    'TH': ['TH'],
+    'TI': ['TI'],
+    'TN': ['TN'],
+    'TO': ['TO'],
+    'TS': ['TS'],
+    'TU': ['TU'],
+    'TV': ['TV'],
+    'TX': ['TX'],
+    'TZ': ['TZ'],
+    'UC': ['UC'],
+    'UG': ['UG'],
+    'UK': ['UK', 'BD', 'CJ', 'FK', 'GI', 'IO', 'PC', 'SH', 'SX'],
+    'UP': ['UP'],
+    'US': ['US', 'AQ', 'CQ', 'GQ', 'JQ', 'LQ', 'RQ', 'VQ', 'WQ'],
+    'UV': ['UV'],
+    'UY': ['UY'],
+    'UZ': ['UZ'],
+    'VE': ['VE'],
+    'VM': ['VM'],
+    'WA': ['WA'],
+    'WI': ['WI'],
+    'WZ': ['WZ'],
+    'ZA': ['ZA'],
+    'ZI': ['ZI']}
+
+
+def filter_active_stations_map_country():
+    '''Filter active stations using inventory data, then returns a dictionary country -> stations'''
+    stations = load_dataset('stations')
+    inventory = load_dataset('inventory')
+
+    stations['country'] = stations.ID.str.slice(0,2)
+
+    active_stations = inventory[inventory.end_date >= 2019]
+    active = stations[stations['ID'].isin(active_stations.ID.unique())]
+    return active[['ID', 'country']].groupby('country')['ID'].apply(list).to_dict()
+
+
+'''Map territory codes to active stations, it was generated by running:
+>>> filter_active_stations_map_country('country_stations_map.json')
+Due to its size its on a separate file, and retrieved once on module loading.
+Not the best practice, but better than having a 8k lines dictionary roaming free in the file.
+'''
+with open('country_stations_map.json') as f:
+    TERRITORY_ACTIVE_STATIONS_MAP = json.load(f)

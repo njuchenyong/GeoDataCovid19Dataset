@@ -1,6 +1,6 @@
 import argparse
 
-from noaa import download_noaa_files, process_noaa_data
+from ftp import download_noaa_files, process_noaa_data
 
 
 def get_argparser():
@@ -25,9 +25,9 @@ def main():
     args = parser.parse_args()
     if args.download:
         download_noaa_files()
-
-    dataset = process_noaa_data(args.countries)
-    dataset.to_csv(args.countries, index=False, header=True)
+    else:
+        dataset = process_noaa_data(args.countries)
+        dataset.to_csv(args.output, index=False, header=True)
 
 
 if __name__ == '__main__':
