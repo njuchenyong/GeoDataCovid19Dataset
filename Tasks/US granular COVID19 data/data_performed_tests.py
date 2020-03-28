@@ -41,12 +41,21 @@ def main():
     parser = get_argparser()
     args = parser.parse_args()
     
+    # download datasets
     df_states_hist_data = load_dataset('states_historical_data')
     df_states_info = load_dataset('states_information')
     df_us_hist_data = load_dataset('us_historical_data')
     df_counties = load_dataset('counties')
     df_trackers_url = load_dataset('trackers_url')
     df_press = load_dataset('press')
+    
+    # format dates
+    df_states_hist_data['date'] = pd.to_datetime(df_states_hist_data['date'].astype(str))
+    
+    # join full state name
+    df_states_hist_data = df_states_hist_data.merge(df_states_info[['state', 'name']],
+                                                    how='left',
+                                                    on=['state'])
     
     df_states_hist_data.to_csv(f"{args.output}/states_hist_data.csv",
                                index=False, header=True)
