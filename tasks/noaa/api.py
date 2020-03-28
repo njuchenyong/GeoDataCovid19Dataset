@@ -1,8 +1,16 @@
 from datetime import datetime
+import logging
 
+import pandas as pd
 import requests
 
-from references import COUNTRY_AND_TERRITORY_CODES, TERRITORY_ACTIVE_STATIONS_MAP
+from ftp import download_noaa_files
+from references import COUNTRY_AND_TERRITORY_CODES,
+    TERRITORY_ACTIVE_STATIONS_MAP
+
+
+logging.basicConfig(level=logging.DEBUG)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 
 def get_stations_by_country(country):
@@ -59,6 +67,7 @@ def get_request_urls(country, start_date, end_date=None):
             for chunk in chunked_station_list
         ]
 
+
 def get_parse_response(urls):
     """Calls the urls in urls, return responses and errors
 
@@ -74,7 +83,9 @@ def get_parse_response(urls):
     results = list()
     errors = list()
 
-    for url in urls:
+    total = len(urls) - 1
+    for i, url in enumerate(urls):
+        logging.debug('Making request %s / %s', i, total)
         response = requests.get(url)
         try:
             response.raise_for_status()
@@ -90,6 +101,32 @@ def get_parse_response(urls):
     return results, errors
 
 
-def noaa_wordwide_api(country, start_date, end_date):
-    urls = get_request_urls(country, start_date, end_date)
-    results, errors = get_parse_response(urls)
+def noaa_worldwide_api(countries, start_date, end_date=None, enrich_data=True):
+    """Get data from NOAA API.
+
+    Arguments:
+        countries(list[str]): List of FIPS country codes to retrieve.
+        start_date(datetime)
+        end_date(datetime)
+        enrich_data(bool): Add metadata from the metereological stations
+
+    Returns:
+        tuple[list[dict], list[Exception]]
+    """
+    if not os.path.isfile(f'{DATA_DIRECTORY}/stations_metadata.txt'):
+        download_noaa_files(large_files=False)
+
+    result = list()
+    for country in countries:
+        logging.info('Requesting data for %s', country)
+        urls = get_request_urls(country, start_date, end_date)
+        country_results, errors = get_parse_response(urls)
+
+        if errors:
+            logging.INFO('The following errors where found during the operation:')
+            for error in errors:
+                logging.INFO(error)
+
+        result.extend(country_results)
+
+    return pd.DataFrame(result)
