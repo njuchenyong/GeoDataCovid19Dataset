@@ -1,12 +1,13 @@
-from datetime import datetime
+import os
 import logging
+from datetime import datetime
 
 import pandas as pd
 import requests
 
 from ftp import download_noaa_files
-from references import COUNTRY_AND_TERRITORY_CODES,
-    TERRITORY_ACTIVE_STATIONS_MAP
+from references import COUNTRY_AND_TERRITORY_CODES, \
+    TERRITORY_ACTIVE_STATIONS_MAP, DATA_DIRECTORY, load_dataset
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -129,4 +130,16 @@ def noaa_worldwide_api(countries, start_date, end_date=None, enrich_data=True):
 
         result.extend(country_results)
 
-    return pd.DataFrame(result)
+    data = pd.DataFrame(result)
+    stations = load_dataset('stations')
+    data.merge(stations, how='left', left_on='STATION', right_on='ID')
+    data = data.merge(stations, how='left', left_on='STATION', right_on='ID')
+
+    del data['ID']
+    del data['STATE']
+
+    columns = [
+        'DATE', 'STATION', 'LATITUDE', 'LONGITUDE', 'ELEVATION', 'NAME',
+        'GSN FLAG', 'HCN/CRN FLAG', 'WMO ID', 'TMAX', 'TAVG', 'TMIN', 'PRCP', 'SNWD'
+    ]
+    return data[columns]
