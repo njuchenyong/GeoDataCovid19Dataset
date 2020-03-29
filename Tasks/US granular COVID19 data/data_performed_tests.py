@@ -51,11 +51,20 @@ def main():
     
     # format dates
     df_states_hist_data['date'] = pd.to_datetime(df_states_hist_data['date'].astype(str))
+    df_us_hist_data['date'] = pd.to_datetime(df_us_hist_data['date'].astype(str))
     
     # join full state name
     df_states_hist_data = df_states_hist_data.merge(df_states_info[['state', 'name']],
                                                     how='left',
                                                     on=['state'])
+    
+    # drop deprecated and unhelpful columns
+    df_states_hist_data.drop(['pending', 'total', 'hash', 'dateChecked'],
+                             axis=1,
+                             inplace=True)
+    df_us_hist_data.drop(['pending', 'total', 'hash', 'dateChecked'],
+                         axis=1,
+                         inplace=True)
     
     df_states_hist_data.to_csv(f"{args.output}/states_hist_data.csv",
                                index=False, header=True)
